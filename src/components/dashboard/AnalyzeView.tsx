@@ -5,6 +5,8 @@ import {
 } from "recharts";
 import { GeneratedEnergy, CHART_COLORS, generateForecast } from "@/data/stateData";
 import { TrendingUp, Info } from "lucide-react";
+import { convertToMetric, getMetricUnit } from "@/utils/metricFormat";
+import India2047 from "./India2047";
 
 interface AnalyzeViewProps {
   energyData: Map<string, GeneratedEnergy>;
@@ -15,36 +17,47 @@ interface AnalyzeViewProps {
 const tt = { contentStyle: { background: 'hsl(222, 20%, 10%)', border: '1px solid hsl(222, 15%, 18%)', borderRadius: 8, fontSize: 11 } };
 const tk = { fill: 'hsl(215, 15%, 55%)', fontSize: 10 };
 
-const AnalyzeView = ({ energyData, selectedState }: AnalyzeViewProps) => {
+const AnalyzeView = ({ energyData, selectedState, metricMode }: AnalyzeViewProps) => {
+  const unit = getMetricUnit(metricMode);
+
   const stateComparison = useMemo(() => {
     return Array.from(energyData.entries())
       .map(([name, d]) => ({
         name: name.length > 12 ? name.slice(0, 11) + '..' : name,
         fullName: name,
-        renewable: d.totalRenewable,
-        grid: d.gridEnergy,
-        total: d.totalDemand,
+        renewable: convertToMetric(d.totalRenewable, metricMode),
+        grid: convertToMetric(d.gridEnergy, metricMode),
+        total: convertToMetric(d.totalDemand, metricMode),
         renewablePercent: d.renewablePercent,
       }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 15);
-  }, [energyData]);
+  }, [energyData, metricMode]);
 
   const forecastData = useMemo(() => {
+    let raw;
     if (selectedState && energyData.has(selectedState)) {
-      return generateForecast(energyData.get(selectedState)!);
+      raw = generateForecast(energyData.get(selectedState)!);
+    } else {
+      const totalDemand = Array.from(energyData.values()).reduce((s, d) => s + d.totalDemand, 0);
+      const totalRenewable = Array.from(energyData.values()).reduce((s, d) => s + d.totalRenewable, 0);
+      raw = generateForecast({
+        stateName: "India", solar: 0, wind: 0, hydro: 0, biomass: 0,
+        totalRenewable, gridEnergy: totalDemand - totalRenewable,
+        totalDemand, energySaved: 0,
+        renewablePercent: Math.round(totalRenewable / totalDemand * 100),
+        peakDemand: totalDemand * 1.2, minDemand: totalDemand * 0.5,
+        dominantSource: "Mixed",
+      });
     }
-    const totalDemand = Array.from(energyData.values()).reduce((s, d) => s + d.totalDemand, 0);
-    const totalRenewable = Array.from(energyData.values()).reduce((s, d) => s + d.totalRenewable, 0);
-    return generateForecast({
-      stateName: "India", solar: 0, wind: 0, hydro: 0, biomass: 0,
-      totalRenewable, gridEnergy: totalDemand - totalRenewable,
-      totalDemand, energySaved: 0,
-      renewablePercent: Math.round(totalRenewable / totalDemand * 100),
-      peakDemand: totalDemand * 1.2, minDemand: totalDemand * 0.5,
-      dominantSource: "Mixed",
-    });
-  }, [energyData, selectedState]);
+    return raw.map(p => ({
+      ...p,
+      predicted: convertToMetric(p.predicted, metricMode),
+      upper: convertToMetric(p.upper, metricMode),
+      lower: convertToMetric(p.lower, metricMode),
+      historical: p.historical ? convertToMetric(p.historical, metricMode) : undefined,
+    }));
+  }, [energyData, selectedState, metricMode]);
 
   const renewableRanking = useMemo(() => {
     return Array.from(energyData.entries())
@@ -88,8 +101,8 @@ const AnalyzeView = ({ energyData, selectedState }: AnalyzeViewProps) => {
             <YAxis tick={tk} />
             <Tooltip {...tt} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="renewable" stackId="a" fill={CHART_COLORS.renewable} name="Renewable (MW)" />
-            <Bar dataKey="grid" stackId="a" fill={CHART_COLORS.grid} name="Grid (MW)" />
+            <Bar dataKey="renewable" stackId="a" fill={CHART_COLORS.renewable} name={`Renewable (${unit})`} />
+            <Bar dataKey="grid" stackId="a" fill={CHART_COLORS.grid} name={`Grid (${unit})`} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -124,11 +137,14 @@ const AnalyzeView = ({ energyData, selectedState }: AnalyzeViewProps) => {
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Area type="monotone" dataKey="upper" fill="hsl(185, 80%, 45%)" stroke="none" fillOpacity={0.1} name="Upper Bound" />
             <Area type="monotone" dataKey="lower" fill="hsl(185, 80%, 45%)" stroke="none" fillOpacity={0.1} name="Lower Bound" />
-            <Line type="monotone" dataKey="historical" stroke={CHART_COLORS.demand} strokeWidth={2} dot={{ fill: CHART_COLORS.demand, r: 3 }} name="Historical (MW)" connectNulls={false} />
-            <Line type="monotone" dataKey="predicted" stroke={CHART_COLORS.renewable} strokeWidth={2} strokeDasharray="5 5" dot={{ fill: CHART_COLORS.renewable, r: 3 }} name="Predicted (MW)" connectNulls={false} />
+            <Line type="monotone" dataKey="historical" stroke={CHART_COLORS.demand} strokeWidth={2} dot={{ fill: CHART_COLORS.demand, r: 3 }} name={`Historical (${unit})`} connectNulls={false} />
+            <Line type="monotone" dataKey="predicted" stroke={CHART_COLORS.renewable} strokeWidth={2} strokeDasharray="5 5" dot={{ fill: CHART_COLORS.renewable, r: 3 }} name={`Predicted (${unit})`} connectNulls={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+
+      {/* India @ 2047 Sustainability Progress */}
+      <India2047 energyData={energyData} />
 
       <div className="bg-card border border-border rounded-lg p-4">
         <div className="flex items-center gap-2 mb-3">
