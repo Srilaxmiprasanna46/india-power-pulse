@@ -7,6 +7,10 @@ import { GeneratedEnergy, CHART_COLORS, generateForecast } from "@/data/stateDat
 import { TrendingUp, Info } from "lucide-react";
 import { convertToMetric, getMetricUnit } from "@/utils/metricFormat";
 import India2047 from "./India2047";
+import EmissionsPredictor from "./EmissionsPredictor";
+import PolicySimulator from "./PolicySimulator";
+import InsightsPanel from "./InsightsPanel";
+import FutureTrendChart from "./FutureTrendChart";
 
 interface AnalyzeViewProps {
   energyData: Map<string, GeneratedEnergy>;
@@ -92,6 +96,7 @@ const AnalyzeView = ({ energyData, selectedState, metricMode }: AnalyzeViewProps
         </h2>
       </div>
 
+      {/* ─── EXISTING CHARTS ─── */}
       <div className="bg-card border border-border rounded-lg p-4">
         <h3 className="text-sm font-semibold mb-3">Statewise Consumption (Top 15) — Renewable vs Grid</h3>
         <ResponsiveContainer width="100%" height={300}>
@@ -143,9 +148,10 @@ const AnalyzeView = ({ energyData, selectedState, metricMode }: AnalyzeViewProps
         </ResponsiveContainer>
       </div>
 
-      {/* India @ 2047 Sustainability Progress */}
+      {/* ─── INDIA @ 2047 ─── */}
       <India2047 energyData={energyData} />
 
+      {/* ─── STATIC INSIGHTS (existing) ─── */}
       <div className="bg-card border border-border rounded-lg p-4">
         <div className="flex items-center gap-2 mb-3">
           <Info className="w-4 h-4 text-primary" />
@@ -160,6 +166,30 @@ const AnalyzeView = ({ energyData, selectedState, metricMode }: AnalyzeViewProps
           ))}
         </div>
       </div>
+
+      {/* ─── DIVIDER: ML-POWERED SECTION ─── */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest whitespace-nowrap px-1">
+          🤖 ML-Powered Analysis
+        </span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+      <p className="text-[10px] text-muted-foreground -mt-4 text-center">
+        Connected to FastAPI backend at http://127.0.0.1:8000
+      </p>
+
+      {/* ─── FUTURE EMISSIONS PREDICTOR ─── */}
+      <EmissionsPredictor />
+
+      {/* ─── POLICY SIMULATOR ─── */}
+      <PolicySimulator />
+
+      {/* ─── ML FUTURE TREND CHART ─── */}
+      <FutureTrendChart energyData={energyData} selectedState={selectedState} />
+
+      {/* ─── AI INSIGHTS PANEL ─── */}
+      <InsightsPanel energyData={energyData} />
     </div>
   );
 };
